@@ -1,0 +1,31 @@
+{
+  "name": "testtool",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "局域网内手机遥控电脑截屏，交给 AI 解答并把答案回传手机",
+  "scripts": {
+    "dev": "node dev.mjs",
+    "start": "node server/server.ts",
+    "prestart": "node dev.mjs --build",
+    "service": "pwsh -NoProfile -File service.ps1",
+    "server": "node --watch server/server.ts",
+    "build:web": "node dev.mjs --build",
+    "test": "node server/session.test.ts && node server/pics.test.ts",
+    "typecheck": "tsc --noEmit -p server/tsconfig.json && tsc --noEmit -p web/tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "dompurify": "^3.4.16",
+    "highlight.js": "^11.12.0",
+    "marked": "^18.0.14",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+.env
+web/app.js
+web/app.js.map
+*.log
+pics/

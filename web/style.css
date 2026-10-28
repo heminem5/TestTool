@@ -1,0 +1,631 @@
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --line: #262b36;
+  --text: #e7e9ee;
+  --muted: #8b93a5;
+  --accent: #4c8dff;
+  --danger: #ff6b6b;
+  --radius: 12px;
+
+  /* 刘海在横屏时跑到左右两侧，固定的 14px 会被它吃掉一部分。
+     max() 取两者中较大的那个：没刘海时就是普通的 14px。 */
+  --pad-l: max(14px, env(safe-area-inset-left, 0px));
+  --pad-r: max(14px, env(safe-area-inset-right, 0px));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: contain;
+}
+
+#root,
+.app {
+  height: 100%;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── 顶部工具条 ─────────────────────────────── */
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* 窄屏上三组控件放不下时换行，而不是把按钮挤扁 */
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: max(10px, env(safe-area-inset-top, 0px)) var(--pad-r) 10px var(--pad-l);
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.bar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* 三组控件都按内容宽度排，只在极窄屏上由 .bar 的 flex-wrap 兜底换行 */
+.segmented {
+  display: inline-flex;
+  background: #0b0d12;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.segmented button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  /* 「性格测评」这类两字以上的标签在窄容器里会被折成两行，
+     整条工具栏跟着变高 —— 宁可溢出由外层换行处理，也不要断字 */
+  white-space: nowrap;
+}
+
+/* 字号三档只有单字，按钮收窄一点：窄屏上工具栏能少折一行 */
+.segmented.font button {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.segmented button.on {
+  background: var(--accent);
+  color: #fff;
+}
+
+.segmented button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+/*
+  360 / 375 这类窄屏上，三组控件按常规尺寸排会差几个像素掉到第二行。
+  字号和左右内边距各收一档就能排回同一行 —— 高度不变，可点区域还是 42px。
+  320 宽的老机型仍然放不下，那时候由 .bar 的 flex-wrap 兜底换行。
+*/
+@media (max-width: 380px) {
+  .bar,
+  .bar-right {
+    gap: 8px;
+  }
+
+  .segmented button {
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+
+  .segmented.font button {
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+
+  .switch {
+    gap: 5px;
+    font-size: 13px;
+  }
+
+  .switch input {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* ── 主区域 ─────────────────────────────────── */
+
+.stage {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px var(--pad-r) 16px var(--pad-l);
+  -webkit-overflow-scrolling: touch;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 15px;
+  text-align: center;
+  margin-top: 18vh;
+  padding: 0 24px;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.status em {
+  font-style: normal;
+  color: #5d6577;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+/* ── 答案区的 Markdown 渲染 ─────────────────── */
+
+.answer {
+  /* --answer-scale 由顶部的 A− / A+ 控制，挂在 :root 上 */
+  font-size: calc(16px * var(--answer-scale, 1));
+  word-break: break-word;
+}
+
+.answer > :first-child {
+  margin-top: 0;
+}
+
+.answer > :last-child {
+  margin-bottom: 0;
+}
+
+.answer p {
+  margin: 0 0 12px;
+}
+
+.answer h1,
+.answer h2,
+.answer h3,
+.answer h4 {
+  margin: 20px 0 10px;
+  line-height: 1.35;
+  font-weight: 650;
+}
+
+.answer h1 {
+  font-size: 20px;
+}
+.answer h2 {
+  font-size: 18px;
+}
+.answer h3 {
+  font-size: 17px;
+}
+.answer h4 {
+  font-size: 16px;
+}
+
+.answer ul,
+.answer ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.answer li {
+  margin: 4px 0;
+}
+
+.answer li > ul,
+.answer li > ol {
+  margin: 4px 0;
+}
+
+.answer blockquote {
+  margin: 0 0 12px;
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+}
+
+.answer a {
+  color: var(--accent);
+}
+
+.answer hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 18px 0;
+}
+
+.answer strong {
+  font-weight: 650;
+  color: #fff;
+}
+
+/* 行内代码 */
+.answer code {
+  font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+  font-size: calc(14px * var(--answer-scale, 1));
+  background: #232733;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+/* 代码块 */
+.answer pre.code {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  background: #0b0d12;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  /* 长行走横向滚动，不折行。
+     试过折行（pre-wrap）：续行会被顶回行首，和真正的语句开头对齐在同一列，
+     代码结构当场读不出来 —— 屏幕上量过，续行和逻辑行都落在同一个 x 上。
+     悬挂缩进能修，但要给每一行套一个块元素，得动渲染器，代价比收益大。 */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.answer pre.code code {
+  display: block;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: calc(13.5px * var(--answer-scale, 1));
+  line-height: 1.6;
+  white-space: pre;
+  color: #d6deeb;
+}
+
+/* 表格 */
+.answer table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 14px;
+}
+
+.answer th,
+.answer td {
+  border: 1px solid var(--line);
+  padding: 7px 10px;
+  text-align: left;
+}
+
+.answer th {
+  background: var(--panel);
+  font-weight: 600;
+}
+
+/* ── highlight.js 配色（暗色）─────────────── */
+
+.hljs-comment,
+.hljs-quote {
+  color: #5d6577;
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-doctag,
+.hljs-type,
+.hljs-name {
+  color: #c792ea;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute {
+  color: #c3e88d;
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+  color: #f78c6c;
+}
+
+.hljs-title,
+.hljs-built_in {
+  color: #82aaff;
+}
+
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: #ffcb6b;
+}
+
+.hljs-operator,
+.hljs-punctuation {
+  color: #89ddff;
+}
+
+.hljs-meta,
+.hljs-tag {
+  color: #8b93a5;
+}
+
+.hljs-deletion {
+  color: var(--danger);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.error {
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  color: var(--danger);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.reasoning {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.reasoning summary {
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.reasoning pre {
+  margin: 10px 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: calc(13px * var(--answer-scale, 1));
+  color: var(--muted);
+  font-family: inherit;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+/* ── 性格测评：岗位与题数 ───────────────────── */
+
+.job {
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  padding: 10px var(--pad-r) 10px var(--pad-l);
+  font-size: 14px;
+}
+
+.job summary {
+  color: var(--muted);
+  cursor: pointer;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.job[open] summary {
+  margin-bottom: 9px;
+}
+
+.job textarea {
+  display: block;
+  width: 100%;
+  /* 长 JD 在框内滚动，不会把答案区挤没 */
+  max-height: 30vh;
+  resize: vertical;
+  background: #0b0d12;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 10px 12px;
+}
+
+.job textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.job textarea:disabled {
+  opacity: 0.55;
+}
+
+.jobnote {
+  margin: 8px 0 0;
+  color: #5d6577;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.quizbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px var(--pad-r) 8px var(--pad-l);
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.quizbar b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.quizbar button {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.quizbar button:active:not(:disabled) {
+  background: var(--line);
+}
+
+.quizbar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ── 底部按钮 ───────────────────────────────── */
+
+.actions {
+  display: flex;
+  gap: 10px;
+  padding: 12px var(--pad-r) max(12px, env(safe-area-inset-bottom, 0px)) var(--pad-l);
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+
+.actions button {
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  /* 44px 是移动端可点区域的下限 */
+  min-height: 52px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.primary {
+  flex: 1;
+  background: var(--accent);
+  color: #fff;
+}
+
+.primary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ghost {
+  flex: 0 0 92px;
+  background: transparent;
+  border: 1px solid var(--line) !important;
+  color: var(--muted);
+}
+
+/* ── 横屏（手机转过来）──────────────────────── */
+
+/*
+  只处理「横屏且矮」的视口。手机横过来之后高度只剩 375–430px，
+  顶栏还占两行的话答案区就没剩多少了 —— 所以把顶栏压成一行、
+  各处间距收紧，把纵向空间尽量留给答案和代码块。
+
+  用 max-height 而不是只判 orientation：桌面窗口拉得很矮时，
+  这套紧凑样式同样是合适的；正常的桌面窗口不会命中。
+*/
+@media (orientation: landscape) and (max-height: 480px) {
+  :root {
+    /* 横屏宽度富余，左右收到 10px，代码块能多显示两列。
+       刘海由 env() 兜住 —— 横屏时它就在左右两侧。 */
+    --pad-l: max(10px, env(safe-area-inset-left, 0px));
+    --pad-r: max(10px, env(safe-area-inset-right, 0px));
+  }
+
+  .bar {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    gap: 8px 10px;
+  }
+
+  .segmented button {
+    padding: 7px 12px;
+    font-size: 13px;
+  }
+
+  .stage {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .actions {
+    padding-top: 8px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .actions button {
+    min-height: 42px;
+    font-size: 16px;
+  }
+
+  .job {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .job textarea {
+    max-height: 22vh;
+  }
+
+  .quizbar {
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  .hint {
+    margin-top: 10vh;
+  }
+}
